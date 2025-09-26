@@ -42,20 +42,49 @@ export class UserGetController {
     };
 
     // CHANGE PASSWORD PAGE
-    // CHANGE PASSWORD PAGE
-getChangePassword = (req, res) => {
-    const email = req.session.userEmail;
-    if (!email) {
-        return res.status(401).render("signin", { 
-            message: "Please sign in to change the password",
-            siteKey: process.env.RECAPTCHA_SITE_KEY
+    
+    getChangePassword = (req, res) => {
+        const email = req.session.userEmail;
+        if (!email) {
+            return res.status(401).render("signin", { 
+                message: "Please sign in to change the password",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
+        }
+        res.render("change-password", { 
+            message: "", 
+            siteKey: process.env.RECAPTCHA_SITE_KEY 
         });
-    }
-    res.render("change-password", { 
-        message: "", 
-        siteKey: process.env.RECAPTCHA_SITE_KEY 
-    });
-};
+    };
+    // PROFILE PAGE
+    getProfilePage = async (req, res) => {
+        try {
+            const email = req.session.userEmail;
+            if (!email) {
+                return res.status(401).render("signin", { 
+                    message: "Please sign in to view your profile",
+                    siteKey: process.env.RECAPTCHA_SITE_KEY
+                });
+            }
+
+            // Lấy thông tin người dùng từ DB
+            const user = await User.findOne({ email }).select("-password"); // loại bỏ password
+            if (!user) {
+                return res.status(404).render("signin", { 
+                    message: "User not found",
+                    siteKey: process.env.RECAPTCHA_SITE_KEY
+                });
+            }
+
+            res.render("profile", { user });
+        } catch (error) {
+            console.error("Profile page error:", error);
+            res.status(500).render("signin", { 
+                message: "Something went wrong",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
+        }
+    };
 
     // LOGOUT
     logoutUser = (req, res) => {

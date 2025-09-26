@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Profile</title>
+    
+    <style>
+        section {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            text-align: center;
+            background-color: #49eb46;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            margin: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #ddd;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background-color: #1961e7;
+        }
+    </style>
+</head>
+<body>
+    <section>
+        <h1><strong>Welcome, <%= user.username %>!</strong></h1>
+        <p>Email: <%= user.email %></p>
+
+        <div>
+            <button class="btn btn-light" onclick="signOut()">Sign Out</button>
+            <button class="btn btn-light" onclick="resetPassword()">Change Password</button>
+        </div>  
+    </section>
+
+    <script>
+        // Function to handle sign-out
+        function signOut() {
+            window.location.href = "/user/signout";
+        }
+
+        // Function to handle reset password
+        function resetPassword() {
+            window.location.href = "/user/change-password";
+        }
+    </script>
+</body>
+</html>

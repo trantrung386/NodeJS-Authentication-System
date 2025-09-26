@@ -15,6 +15,9 @@ router.get('/signout', UserGetControllerInstance.logoutUser);  // Route to handl
 router.get('/forgot-password', UserGetControllerInstance.getForgotPassword);  // Route to render forgot password page
 router.get('/change-password', UserGetControllerInstance.getChangePassword);  // Route to render change password page
 
+// add route for profile
+router.get('/profile', UserGetControllerInstance.getProfilePage);
+
 // POST REQUESTS
 
 // Route definitions for POST requests
