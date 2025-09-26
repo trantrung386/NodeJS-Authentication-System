@@ -11,7 +11,6 @@
     />
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
-      /* Background image style */
       body {
         background-image: url("/cn.png");
         background-size: contain;
@@ -26,12 +25,7 @@
       }
 
       .main-content {
-        background: rgba(
-          0,
-          0,
-          0,
-          0.5
-        ); /* Add a semi-transparent background to main content for readability */
+        background: rgba(0, 0, 0, 0.5);
         padding: 20px;
         border-radius: 5px;
         margin-left: 50px;
@@ -48,18 +42,21 @@
       section {
         padding-left: 20px;
         backdrop-filter: blur(3px);
-        background-color: rgba(
-          255,
-          255,
-          255,
-          0.25
-        ); /* Adjust the transparency as needed */
+        background-color: rgba(255, 255, 255, 0.25);
         border: 1px solid rgba(255, 255, 255, 0.01);
         border-radius: 16px;
         display: inline-block;
         height: auto;
         width: auto;
         margin-top: 20px;
+      }
+      footer {
+        text-align: center;
+        padding: 10px;
+        margin-top: 20px;
+        color: #fff;
+        background-color: rgba(0, 0, 0, 0.6);
+        border-top: 2px solid #444;
       }
     </style>
   </head>
@@ -77,9 +74,15 @@
       </nav>
     </header>
     <main>
-      <!-- This is where content from other pages will be injected -->
+      <!-- Đây là nơi các view con sẽ được render -->
       <%- body %>
     </main>
+
+    <!-- Footer hiển thị Student ID + Fullname -->
+    <footer>
+      <p>Student ID: <strong>22720111</strong> - Fullname: <strong>Tran Van Trung</strong></p>
+    </footer>
+
     <!-- Bootstrap JS and dependencies -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
