@@ -1,171 +1,256 @@
-import mongoose from "mongoose";  // Importing mongoose for MongoDB interactions
-import User from "../models/userModel.js";  // Importing User model
-import bcrypt from "bcrypt";  // Importing bcrypt for password hashing
-import { transporter } from "../config/nodemailerConfig.js";  // Importing nodemailer transporter
-import dotenv from "dotenv";  // Importing dotenv to load environment variables
+import mongoose from "mongoose";
+import User from "../models/userModel.js";
+import bcrypt from "bcrypt";
+import { transporter } from "../config/nodemailerConfig.js";
+import dotenv from "dotenv";
+import fetch from "node-fetch"; // dùng để verify reCAPTCHA
 
-dotenv.config();  // Loading environment variables from .env file
+dotenv.config();
 
-export  class UserGetController {
+export class UserGetController {
+    // SIGN UP PAGE
     getSignUpPage = (req, res) => {
-        res.render("signup",{ message: "" });
-    }
+        res.render("signup", { 
+            message: "", 
+            siteKey: process.env.RECAPTCHA_SITE_KEY 
+        });
+    };
 
+    // SIGN IN PAGE
     getSignInPage = (req, res) => {
-        res.render("signin", { message: "" });
-    }
+        res.render("signin", { 
+            message: "", 
+            siteKey: process.env.RECAPTCHA_SITE_KEY 
+        });
+    };
 
+    // HOMEPAGE
     homePage = (req, res) => {
         const email = req.session.userEmail;
         if (!email) {
-            return res.status(404).render("signin",{message:"Please sign in to view the homepage"});
+            return res.status(401).render("signin", { 
+                message: "Please sign in to view the homepage",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
         }
         res.render("homepage");
-    }
+    };
 
+    // FORGOT PASSWORD PAGE
     getForgotPassword = (req, res) => {
         res.render("forgot-password", { message: "" });
-    }
+    };
 
-    getChangePassword = (req, res) => {
-        const email = req.session.userEmail;
-        if (!email) {
-            return res.status(404).render("signin",{message:"Please sign in to change the password"});
-        }
-        res.render("change-password", { message: "" });
-    }
-
-    logoutUser = (req, res) => {
-        // req.logout();
-        req.session.destroy((err) => {
-            if (err) {
-                console.error('Error signing out:', err);
-                res.status(500).send('Error signing out');
-            } else {
-                res.status(201).render('signin',{message:"user logout"}); // Redirect to the sign-in page after signing out
-            }
+    // CHANGE PASSWORD PAGE
+    // CHANGE PASSWORD PAGE
+getChangePassword = (req, res) => {
+    const email = req.session.userEmail;
+    if (!email) {
+        return res.status(401).render("signin", { 
+            message: "Please sign in to change the password",
+            siteKey: process.env.RECAPTCHA_SITE_KEY
         });
     }
+    res.render("change-password", { 
+        message: "", 
+        siteKey: process.env.RECAPTCHA_SITE_KEY 
+    });
+};
 
+    // LOGOUT
+    logoutUser = (req, res) => {
+        req.session.destroy((err) => {
+            if (err) {
+                console.error("Error signing out:", err);
+                res.status(500).send("Error signing out");
+            } else {
+                res.redirect("/user/signin");
+            }
+        });
+    };
 }
 
-export  class UserPostController {
-    
-    //sign up
+export class UserPostController {
+    // SIGN UP
     createUser = async (req, res) => {
-        const { username, email, password,cpassword } = req.body;
+        const { username, email, password, cpassword } = req.body;
+
         if (password !== cpassword) {
-            return res.status(400).render("signup",{message:"Passwords don't match"});
+            return res.status(400).render("signup", { 
+                message: "Passwords don't match", 
+                siteKey: process.env.RECAPTCHA_SITE_KEY 
+            });
         }
-        //check if user already exists
-        const existingUser = await User.findOne({ email: email });
-        if (existingUser) {
-            return res.status(400).render("signup",{message:"User already exists"});
-        }
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ username, email,password:hashedPassword });
+
         try {
+            const existingUser = await User.findOne({ email });
+            if (existingUser) {
+                return res.status(400).render("signup", { 
+                    message: "User already exists",
+                    siteKey: process.env.RECAPTCHA_SITE_KEY
+                });
+            }
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const newUser = new User({ username, email, password: hashedPassword });
+
             await newUser.save();
-            res.status(201).render("signin",{message:"User created successfully"});
+            res.status(201).render("signin", { 
+                message: "User created successfully. Please sign in.",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
         } catch (error) {
-            res.status(409).json({ message: error.message });
+            res.status(500).render("signup", { 
+                message: error.message, 
+                siteKey: process.env.RECAPTCHA_SITE_KEY 
+            });
         }
     };
 
-    //sign in
+    // SIGN IN + reCAPTCHA
     signInUser = async (req, res) => {
         const { email, password } = req.body;
-        //Recaptcha
-        const recaptcha = req.body['g-recaptcha-response'];
+        const recaptcha = req.body["g-recaptcha-response"];
 
-        if (recaptcha === undefined || recaptcha === '' || recaptcha === null) {
-            return res.status(404).render("signin",{message:"Please select captcha"});
+        if (!recaptcha) {
+            return res.status(400).render("signin", { 
+                message: "Please complete captcha",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
         }
-        // const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-        // const url = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptcha}`;
-        // const response = await fetch(url, {
-        //     method: 'POST',
-        //     headers: {
-        //         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
-        //     }
-        // });
 
         try {
-            const existingUser = await User.findOne({ email: email});
-            
-            if (!existingUser) 
-            return res.status(404).render("signin",{message:"User doesn't exist"});
-        
-            const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
-            
-            if (!isPasswordCorrect)
-                return res.status(400).render("signin",{message:"Invalid credentials || Incorrect Password"});
-            req.session.userEmail = email;
-            res.redirect('/user/homepage');
-            
-        }
-        catch (error) {
-            res.status(500).render("signin",{message:error.message});
-            
-        }
-    }
+            // Verify reCAPTCHA với Google
+            const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+            const captchaRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `secret=${secretKey}&response=${recaptcha}`
+            });
+            const captchaData = await captchaRes.json();
 
-    //forgot password
+            if (!captchaData.success) {
+                return res.status(400).render("signin", { 
+                    message: "Captcha verification failed",
+                    siteKey: process.env.RECAPTCHA_SITE_KEY
+                });
+            }
+
+            // Check user tồn tại
+            const existingUser = await User.findOne({ email });
+            if (!existingUser) {
+                return res.status(404).render("signin", { 
+                    message: "User doesn't exist",
+                    siteKey: process.env.RECAPTCHA_SITE_KEY
+                });
+            }
+
+            // Check password
+            const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
+            if (!isPasswordCorrect) {
+                return res.status(400).render("signin", { 
+                    message: "Invalid credentials || Incorrect Password",
+                    siteKey: process.env.RECAPTCHA_SITE_KEY
+                });
+            }
+
+            req.session.userEmail = email;
+            res.redirect("/user/homepage");
+        } catch (error) {
+            res.status(500).render("signin", { 
+                message: error.message,
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
+        }
+    };
+
+    // FORGOT PASSWORD
     forgotPassword = async (req, res) => {
         const { email } = req.body;
-        try {
-            const existingUser = await User.findOne({ email: email });
-            if (!existingUser) 
-                return res.status(404).render("forgot-password",{message:"User doesn't exist"});
 
-            // Generate random password
+        try {
+            const existingUser = await User.findOne({ email });
+            if (!existingUser) {
+                return res.status(404).render("forgot-password", { message: "User doesn't exist" });
+            }
+
             const newPassword = Math.random().toString(36).slice(-8);
             const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-            try{
+            try {
                 await transporter.sendMail({
                     from: process.env.EMAIL,
                     to: email,
-                    subject: 'Password Reset',
-                    text: `Your new password is: ${newPassword}`
-                    });
-            }catch(error){
-                console.log(error);
-                return res.status(404).render("forgot-password",{message:"Not valid Email"+error});
+                    subject: "Password Reset",
+                    text: `Your new password is: ${newPassword}`,
+                });
+            } catch (mailError) {
+                console.error("Email error:", mailError);
+                return res.status(500).render("forgot-password", { message: "Failed to send email. Try again." });
             }
 
             existingUser.password = hashedPassword;
             await existingUser.save();
-            
-            res.status(201).render("signin",{message:"New Password sent to your email"});
-        }
-        catch (error) {
-            res.status(500).render("forgot-password",{message:error.message});
-        }
-    }
 
-    //change password
+            res.status(200).render("signin", { 
+                message: "New password sent to your email",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
+        } catch (error) {
+            res.status(500).render("forgot-password", { message: error.message });
+        }
+    };
+
+    // CHANGE PASSWORD
     changePassword = async (req, res) => {
-        const { oldPassword, newPassword } = req.body;
-        try {
-            const email = req.session.userEmail;
-            const existingUser = await User.findOne({ email: email });
-            if (!existingUser) 
-                return res.status(404).render("change-password",{message:"User doesn't exist"});
+    const { oldPassword, newPassword } = req.body;
 
-            const isPasswordCorrect = await bcrypt.compare(oldPassword, existingUser.password);
-            if (!isPasswordCorrect)
-                return res.status(400).render("change-password",{message:"Invalid credentials"});
+    try {
+        const email = req.session.userEmail;
+        if (!email) {
+            return res.status(401).render("signin", { 
+                message: "Please sign in to change your password.",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
+        }
 
-            const hashedPassword = await bcrypt.hash(newPassword, 10);
-            existingUser.password = hashedPassword;
-            await existingUser.save();
-            res.status(201).render("signin",{message:"Password changed successfully"});
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            return res.status(404).render("change-password", { 
+                message: "User doesn't exist",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
         }
-        catch (error) {
-            res.status(500).render("change-password",{message:error.message});
+
+        const isPasswordCorrect = await bcrypt.compare(oldPassword, existingUser.password);
+        if (!isPasswordCorrect) {
+            return res.status(400).render("change-password", { 
+                message: "Old password is incorrect",
+                siteKey: process.env.RECAPTCHA_SITE_KEY
+            });
         }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        existingUser.password = hashedPassword;
+        await existingUser.save();
+
+        // Sau khi đổi mật khẩu thì xoá session để bắt buộc đăng nhập lại
+        req.session.destroy((err) => {
+            if (err) console.error("Session destroy error:", err);
+        });
+
+        res.status(200).render("signin", { 
+            message: "Password changed successfully. Please sign in again.",
+            siteKey: process.env.RECAPTCHA_SITE_KEY
+        });
+    } catch (error) {
+        res.status(500).render("change-password", { 
+            message: "Something went wrong: " + error.message,
+            siteKey: process.env.RECAPTCHA_SITE_KEY
+        });
     }
+};
+
+};
 
 
-}

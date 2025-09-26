@@ -11,10 +11,7 @@
       placeholder="Password"
       required
     /><br /><br />
-    <div
-      class="g-recaptcha"
-      data-sitekey="6LflLRIqAAAAAHrbmeUx3WThRxp7On8iAQQOIQWH"
-    ></div>
+    <div class="g-recaptcha" data-sitekey="<%= siteKey %>"></div>
     <button
       type="submit"
       class="btn btn-light"
@@ -31,3 +28,4 @@
   
   <p><strong>Don't have an account?</strong> &nbsp; <a href="/user/signup"><strong>Sign up</strong></a></p>
 </section>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
