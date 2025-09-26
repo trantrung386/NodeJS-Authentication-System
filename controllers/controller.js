@@ -36,10 +36,13 @@ export class UserGetController {
         res.render("homepage");
     };
 
-    // FORGOT PASSWORD PAGE
     getForgotPassword = (req, res) => {
-        res.render("forgot-password", { message: "" });
+        res.render("forgot-password", { 
+            message: "", 
+            siteKey: process.env.RECAPTCHA_SITE_KEY // hoặc trực tiếp "YOUR_SITE_KEY"
+        });
     };
+
 
     // CHANGE PASSWORD PAGE
     
@@ -194,41 +197,53 @@ export class UserPostController {
     };
 
     // FORGOT PASSWORD
-    forgotPassword = async (req, res) => {
-        const { email } = req.body;
+forgotPassword = async (req, res) => {
+    const { email } = req.body;
 
-        try {
-            const existingUser = await User.findOne({ email });
-            if (!existingUser) {
-                return res.status(404).render("forgot-password", { message: "User doesn't exist" });
-            }
-
-            const newPassword = Math.random().toString(36).slice(-8);
-            const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-            try {
-                await transporter.sendMail({
-                    from: process.env.EMAIL,
-                    to: email,
-                    subject: "Password Reset",
-                    text: `Your new password is: ${newPassword}`,
-                });
-            } catch (mailError) {
-                console.error("Email error:", mailError);
-                return res.status(500).render("forgot-password", { message: "Failed to send email. Try again." });
-            }
-
-            existingUser.password = hashedPassword;
-            await existingUser.save();
-
-            res.status(200).render("signin", { 
-                message: "New password sent to your email",
+    try {
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            return res.status(404).render("forgot-password", { 
+                message: "User doesn't exist",
                 siteKey: process.env.RECAPTCHA_SITE_KEY
             });
-        } catch (error) {
-            res.status(500).render("forgot-password", { message: error.message });
         }
-    };
+
+        const newPassword = Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        try {
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Password Reset",
+        text: `Your new password is: ${newPassword}`,
+    });
+} catch (mailError) {
+    console.error("Email error:", mailError);
+    return res.status(500).render("forgot-password", { 
+        message: "Failed to send email. Try again.",
+        siteKey: process.env.RECAPTCHA_SITE_KEY
+    });
+}
+
+
+        existingUser.password = hashedPassword;
+        await existingUser.save();
+
+        // Sau khi reset xong, redirect về signin với thông báo
+        res.status(200).render("signin", { 
+            message: "New password sent to your email",
+            siteKey: process.env.RECAPTCHA_SITE_KEY
+        });
+    } catch (error) {
+        res.status(500).render("forgot-password", { 
+            message: error.message,
+            siteKey: process.env.RECAPTCHA_SITE_KEY
+        });
+    }
+};
+
 
     // CHANGE PASSWORD
     changePassword = async (req, res) => {
